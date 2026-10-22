@@ -21,11 +21,30 @@
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        
         .table-container {
             max-height: calc(100vh - 280px);
+            overflow-x: auto;
+            overflow-y: auto;
+        }
+
+        /* 테이블 가로 스크롤바 미세조정 */
+        .table-container::-webkit-scrollbar {
+            height: 8px;
+            width: 8px;
+        }
+        .table-container::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .dark .table-container::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        .table-container::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .dark .table-container::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
         }
 
         .cell-shift {
@@ -42,12 +61,12 @@
         }
 
         /* 근무 유형별 시각 스타일 */
-        .shift-D {
+        .shift-D, .shift-D12 {
             background-color: #dcfce7 !important;
             color: #15803d !important;
             font-weight: 700;
         }
-        .dark .shift-D {
+        .dark .shift-D, .dark .shift-D12 {
             background-color: #14532d !important;
             color: #86efac !important;
         }
@@ -62,12 +81,12 @@
             color: #fde047 !important;
         }
 
-        .shift-N {
+        .shift-N, .shift-N12 {
             background-color: #dbeafe !important;
             color: #1d4ed8 !important;
             font-weight: 700;
         }
-        .dark .shift-N {
+        .dark .shift-N, .dark .shift-N12 {
             background-color: #1e3a8a !important;
             color: #93c5fd !important;
         }
@@ -99,8 +118,10 @@
             color: #fbcfe8 !important;
         }
 
+        /* 3개 고정열 배치 */
         .sticky-col-1 { position: sticky; left: 0; z-index: 20; }
-        .sticky-col-2 { position: sticky; left: 120px; z-index: 20; }
+        .sticky-col-2 { position: sticky; left: 110px; z-index: 20; }
+        .sticky-col-3 { position: sticky; left: 185px; z-index: 20; }
 
         @media print {
             .no-print { display: none !important; }
@@ -126,13 +147,13 @@
                 </div>
                 <div>
                     <h1 class="text-base sm:text-xl font-bold leading-tight flex items-center gap-2">
-                        <span>간호사 근무일정 관리</span>
+                        <span>간호사 근무일정 관리자</span>
                         <span id="cloudBadge" class="text-[10px] bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300 px-2 py-0.5 rounded-full font-medium flex items-center gap-1">
                             <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
                             <span>Cloud 연동 모드</span>
                         </span>
                     </h1>
-                    <p class="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">스마트 스케줄링 & 근무 규칙 자동 검증</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">24시간 연속 가동 & 스마트 규칙 자동 검증</p>
                 </div>
             </div>
 
@@ -205,31 +226,33 @@
         <div class="bg-white dark:bg-slate-800 rounded-xl p-3 shadow-sm border border-slate-200 dark:border-slate-700 flex flex-wrap items-center justify-between text-xs gap-2 no-print">
             <div class="flex flex-wrap items-center gap-1.5">
                 <span class="font-bold text-slate-500 mr-1">범례:</span>
-                <span class="px-2 py-0.5 rounded shift-D border border-green-300">D (Day)</span>
-                <span class="px-2 py-0.5 rounded shift-E border border-yellow-300">E (Evening)</span>
-                <span class="px-2 py-0.5 rounded shift-N border border-blue-300">N (Night)</span>
-                <span class="px-2 py-0.5 rounded shift-EDU border border-purple-300">EDU</span>
+                <span class="px-2 py-0.5 rounded shift-D border border-green-300">D (07-15시)</span>
+                <span class="px-2 py-0.5 rounded shift-D12 border border-green-300">D12 (08-20시)</span>
+                <span class="px-2 py-0.5 rounded shift-E border border-yellow-300">E (15-23시)</span>
+                <span class="px-2 py-0.5 rounded shift-N border border-blue-300">N (23-07시)</span>
+                <span class="px-2 py-0.5 rounded shift-N12 border border-blue-300">N12 (20-08시)</span>
                 <span class="px-2 py-0.5 rounded border border-slate-300 dark:border-slate-600">🍒 (OFF)</span>
                 <span class="px-2 py-0.5 rounded shift-REQ">📌 REQ</span>
             </div>
             <div class="text-slate-400 text-[11px]">
-                * N-OFF-N(퐁당퐁당) 금지 | D-E-N, E-D, N-OFF-D 금지 | 전문간호사+시니어+주니어 조합
+                * 24시간 연속 공백 없음 (최소 2명~최대 3명 배치) | 최대 4일 연속근무 제한 | 숙련도 조합 유지
             </div>
         </div>
 
         <!-- TAB 1: SCHEDULE GRID -->
         <div id="tabContentSchedule" class="tab-content block">
             <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                <div class="overflow-x-auto table-container no-scrollbar relative">
-                    <table class="w-full text-center text-xs border-collapse">
+                <div class="table-container relative">
+                    <table class="w-full text-center text-xs border-collapse min-w-[1400px]">
                         <thead>
                             <tr class="bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-semibold">
-                                <th class="py-2.5 px-2 sticky-col-1 bg-slate-100 dark:bg-slate-900 min-w-[120px] border-r border-slate-200 dark:border-slate-700">이름</th>
-                                <th class="py-2.5 px-1 sticky-col-2 bg-slate-100 dark:bg-slate-900 min-w-[75px] border-r border-slate-200 dark:border-slate-700">나이트여부</th>
+                                <th class="py-2.5 px-2 sticky-col-1 bg-slate-100 dark:bg-slate-900 min-w-[110px] w-[110px] border-r border-slate-200 dark:border-slate-700 shadow-sm">이름</th>
+                                <th class="py-2.5 px-1 sticky-col-2 bg-slate-100 dark:bg-slate-900 min-w-[75px] w-[75px] border-r border-slate-200 dark:border-slate-700 shadow-sm">나이트여부</th>
+                                <th class="py-2.5 px-1 sticky-col-3 bg-slate-100 dark:bg-slate-900 min-w-[75px] w-[75px] border-r border-slate-200 dark:border-slate-700 shadow-sm">근무일수</th>
                                 <th id="daysHeaderContainer" class="p-0" colspan="31">
                                     <div id="daysHeader" class="flex"></div>
                                 </th>
-                                <th class="py-2.5 px-2 min-w-[60px] bg-slate-100 dark:bg-slate-900 border-l border-slate-200 dark:border-slate-700">합계</th>
+                                <th class="py-2.5 px-2 min-w-[65px] bg-slate-100 dark:bg-slate-900 border-l border-slate-200 dark:border-slate-700">총시간</th>
                             </tr>
                         </thead>
                         <tbody id="scheduleTableBody">
@@ -296,6 +319,7 @@
                             <tr class="border-b border-slate-200 dark:border-slate-700 text-slate-500">
                                 <th class="py-2 px-3">성명</th>
                                 <th class="py-2 px-3">직급</th>
+                                <th class="py-2 px-3">근무 형태</th>
                                 <th class="py-2 px-3">나이트 근무 가능 여부</th>
                                 <th class="py-2 px-3 text-right">관리</th>
                             </tr>
@@ -430,15 +454,15 @@
 
     <!-- APPLICATION UI CONTROLLER LOGIC -->
     <script>
-        // 기본 간호사 이름: 간호사 1, 간호사 2... / 직급: 전문간호사, 시니어, 주니어 3종 단일화
+        // 기본 간호사 목록 (2교대/3교대 및 나이트 여부 지정)
         window.nurses = [
-            { id: 1, name: '간호사 1', title: '전문간호사', allowNight: true },
-            { id: 2, name: '간호사 2', title: '전문간호사', allowNight: false },
-            { id: 3, name: '간호사 3', title: '시니어', allowNight: true },
-            { id: 4, name: '간호사 4', title: '시니어', allowNight: true },
-            { id: 5, name: '간호사 5', title: '주니어', allowNight: true },
-            { id: 6, name: '간호사 6', title: '주니어', allowNight: true },
-            { id: 7, name: '간호사 7', title: '주니어', allowNight: false }
+            { id: 1, name: '간호사 1', title: '전문간호사', shiftType: '3교대', allowNight: true },
+            { id: 2, name: '간호사 2', title: '전문간호사', shiftType: '2교대', allowNight: true },
+            { id: 3, name: '간호사 3', title: '시니어', shiftType: '3교대', allowNight: true },
+            { id: 4, name: '간호사 4', title: '시니어', shiftType: '3교대', allowNight: false },
+            { id: 5, name: '간호사 5', title: '주니어', shiftType: '2교대', allowNight: true },
+            { id: 6, name: '간호사 6', title: '주니어', shiftType: '3교대', allowNight: true },
+            { id: 7, name: '간호사 7', title: '주니어', shiftType: '3교대', allowNight: false }
         ];
 
         let currentDate = new Date();
@@ -514,12 +538,6 @@
 
         function initDemoSchedule() {
             window.scheduleData = {};
-            window.nurses.forEach(nurse => {
-                const reqDay1 = (nurse.id * 3) % window.daysInMonth + 1;
-                const reqDay2 = (nurse.id * 7) % window.daysInMonth + 1;
-                window.scheduleData[`${nurse.id}_${reqDay1}`] = 'REQ';
-                if(reqDay1 !== reqDay2) window.scheduleData[`${nurse.id}_${reqDay2}`] = 'REQ';
-            });
             runAutoScheduler();
         }
 
@@ -546,32 +564,41 @@
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition nurse-row";
 
-                let html = `<td class="py-2.5 px-2 sticky-col-1 bg-white dark:bg-slate-800 font-bold text-left border-r border-slate-200 dark:border-slate-700 min-w-[120px]">
+                const stats = calculateNurseStats(nurse.id, nurse.shiftType);
+
+                // 1열: 이름 / 직급
+                let html = `<td class="py-2.5 px-2 sticky-col-1 bg-white dark:bg-slate-800 font-bold text-left border-r border-slate-200 dark:border-slate-700 min-w-[110px] w-[110px]">
                     <div class="truncate">${nurse.name}</div>
-                    <div class="text-[10px] text-slate-400 font-normal">${nurse.title}</div>
+                    <div class="text-[10px] text-slate-400 font-normal">${nurse.title} (${nurse.shiftType})</div>
                 </td>`;
 
-                html += `<td class="py-2.5 px-1 sticky-col-2 bg-white dark:bg-slate-800 text-[10px] border-r border-slate-200 dark:border-slate-700 min-w-[75px] text-center">
+                // 2열: 나이트 여부
+                html += `<td class="py-2.5 px-1 sticky-col-2 bg-white dark:bg-slate-800 text-[10px] border-r border-slate-200 dark:border-slate-700 min-w-[75px] w-[75px] text-center">
                     <span class="px-2 py-0.5 rounded-full text-[10px] ${nurse.allowNight ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'} font-semibold">
                         ${nurse.allowNight ? 'N 가능' : 'N 불가'}
                     </span>
                 </td>`;
 
+                // 3열: 총 근무일수
+                html += `<td class="py-2.5 px-1 sticky-col-3 bg-white dark:bg-slate-800 text-xs border-r border-slate-200 dark:border-slate-700 min-w-[75px] w-[75px] text-center font-bold text-green-600 dark:text-green-400">
+                    ${stats.work}일
+                </td>`;
+
+                // 일별 근무 셀 (1일 ~ 말일)
                 for(let d = 1; d <= window.daysInMonth; d++) {
                     const shift = window.scheduleData[`${nurse.id}_${d}`] || 'OFF';
                     const shiftClass = getShiftStyleClass(shift);
 
                     html += `<td class="p-0 text-center border-r border-slate-200 dark:border-slate-800 cell-shift">
                         <select onchange="onShiftCellChange(${nurse.id}, ${d}, this.value)" class="w-full h-full text-center bg-transparent cursor-pointer font-bold focus:outline-none rounded text-xs ${shiftClass}">
-                            ${getShiftOptionsForNurse(nurse.allowNight, shift)}
+                            ${getShiftOptionsForNurse(nurse, shift)}
                         </select>
                     </td>`;
                 }
 
-                const stats = calculateNurseStats(nurse.id);
-                html += `<td class="py-2 px-1 bg-slate-50 dark:bg-slate-900 text-[10px] border-l border-slate-200 dark:border-slate-700 min-w-[60px]">
-                    <div>근무:${stats.work}일</div>
-                    <div class="text-slate-400">🍒:${stats.off}</div>
+                // 우측 끝: 총 근무 시간
+                html += `<td class="py-2 px-1 bg-slate-50 dark:bg-slate-900 text-[11px] font-semibold border-l border-slate-200 dark:border-slate-700 min-w-[65px] text-center text-slate-700 dark:text-slate-300">
+                    ${stats.hours}시간
                 </td>`;
 
                 tr.innerHTML = html;
@@ -583,9 +610,9 @@
 
         function getShiftStyleClass(shift) {
             switch(shift) {
-                case 'D': return 'shift-D';
+                case 'D': case 'D12': return 'shift-D';
                 case 'E': return 'shift-E';
-                case 'N': return 'shift-N';
+                case 'N': case 'N12': return 'shift-N';
                 case 'OFF': return 'shift-OFF';
                 case 'EDU': return 'shift-EDU';
                 case 'REQ': return 'shift-REQ';
@@ -593,32 +620,48 @@
             }
         }
 
-        function getShiftOptionsForNurse(allowNight, selectedShift) {
-            const options = [
-                { val: 'D', label: 'D' },
-                { val: 'E', label: 'E' },
-                ...(allowNight ? [{ val: 'N', label: 'N' }] : []),
-                { val: 'EDU', label: 'EDU' },
-                { val: 'OFF', label: '🍒 OFF' },
-                { val: 'REQ', label: '📌 REQ' }
-            ];
+        function getShiftOptionsForNurse(nurse, selectedShift) {
+            let options = [];
+            if(nurse.shiftType === '2교대') {
+                options = [
+                    { val: 'D12', label: 'D12' },
+                    ...(nurse.allowNight ? [{ val: 'N12', label: 'N12' }] : []),
+                    { val: 'EDU', label: 'EDU' },
+                    { val: 'OFF', label: '🍒 OFF' },
+                    { val: 'REQ', label: '📌 REQ' }
+                ];
+            } else {
+                options = [
+                    { val: 'D', label: 'D' },
+                    { val: 'E', label: 'E' },
+                    ...(nurse.allowNight ? [{ val: 'N', label: 'N' }] : []),
+                    { val: 'EDU', label: 'EDU' },
+                    { val: 'OFF', label: '🍒 OFF' },
+                    { val: 'REQ', label: '📌 REQ' }
+                ];
+            }
 
             return options.map(o => `<option value="${o.val}" ${o.val === selectedShift ? 'selected' : ''} class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">${o.label}</option>`).join('');
         }
 
         function onShiftCellChange(nurseId, day, value) {
             window.scheduleData[`${nurseId}_${day}`] = value;
-            renderScheduleFooter();
+            renderScheduleTable();
         }
 
-        function calculateNurseStats(nurseId) {
-            let work = 0, off = 0;
+        function calculateNurseStats(nurseId, shiftType) {
+            let work = 0, off = 0, hours = 0;
             for(let d = 1; d <= window.daysInMonth; d++) {
                 const s = window.scheduleData[`${nurseId}_${d}`] || 'OFF';
-                if(s === 'OFF' || s === 'REQ') off++;
-                else work++;
+                if(s === 'OFF' || s === 'REQ') {
+                    off++;
+                } else {
+                    work++;
+                    if(s === 'D12' || s === 'N12') hours += 12;
+                    else if(s === 'D' || s === 'E' || s === 'N' || s === 'EDU') hours += 8;
+                }
             }
-            return { work, off };
+            return { work, off, hours };
         }
 
         function renderScheduleFooter() {
@@ -627,26 +670,26 @@
 
             const rowD = document.createElement('tr');
             rowD.className = "text-[11px] border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300";
-            let htmlD = `<td colspan="2" class="py-1 px-2 text-right font-bold border-r border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900 sticky-col-1">Day 계</td>`;
+            let htmlD = `<td colspan="3" class="py-1 px-2 text-right font-bold border-r border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900 sticky-col-1">Day 계 (D/D12)</td>`;
 
             const rowE = document.createElement('tr');
             rowE.className = "text-[11px] border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300";
-            let htmlE = `<td colspan="2" class="py-1 px-2 text-right font-bold border-r border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900 sticky-col-1">Eve 계</td>`;
+            let htmlE = `<td colspan="3" class="py-1 px-2 text-right font-bold border-r border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900 sticky-col-1">Eve 계 (E)</td>`;
 
             const rowN = document.createElement('tr');
             rowN.className = "text-[11px] text-slate-600 dark:text-slate-300";
-            let htmlN = `<td colspan="2" class="py-1 px-2 text-right font-bold border-r border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900 sticky-col-1">Night 계</td>`;
+            let htmlN = `<td colspan="3" class="py-1 px-2 text-right font-bold border-r border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900 sticky-col-1">Night 계 (N/N12)</td>`;
 
             for(let d = 1; d <= window.daysInMonth; d++) {
                 let cntD = 0, cntE = 0, cntN = 0;
                 window.nurses.forEach(n => {
                     const s = window.scheduleData[`${n.id}_${d}`];
-                    if(s === 'D') cntD++;
+                    if(s === 'D' || s === 'D12') cntD++;
                     if(s === 'E') cntE++;
-                    if(s === 'N') cntN++;
+                    if(s === 'N' || s === 'N12') cntN++;
                 });
 
-                htmlD += `<td class="py-1 text-center border-r border-slate-200 dark:border-slate-800 font-semibold ${cntD < 1 ? 'text-amber-600 font-bold' : ''}">${cntD}</td>`;
+                htmlD += `<td class="py-1 text-center border-r border-slate-200 dark:border-slate-800 font-semibold ${cntD < 1 ? 'text-red-500 font-bold' : ''}">${cntD}</td>`;
                 htmlE += `<td class="py-1 text-center border-r border-slate-200 dark:border-slate-800 font-semibold">${cntE}</td>`;
                 htmlN += `<td class="py-1 text-center border-r border-slate-200 dark:border-slate-800 font-semibold ${cntN < 1 ? 'text-red-500 font-bold' : ''}">${cntN}</td>`;
             }
@@ -682,7 +725,7 @@
                 btn.className = `w-full text-left p-2.5 rounded-lg border transition flex items-center justify-between text-xs font-semibold ${isSelected ? 'bg-green-50 border-green-500 text-green-700 dark:bg-green-950/40 dark:text-green-300' : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100'}`;
                 btn.innerHTML = `<div>
                     <div>${nurse.name}</div>
-                    <div class="text-[10px] text-slate-400 font-normal">${nurse.title}</div>
+                    <div class="text-[10px] text-slate-400 font-normal">${nurse.title} (${nurse.shiftType})</div>
                 </div>
                 <span class="px-2 py-0.5 rounded-full text-[10px] ${reqCount > 0 ? 'bg-pink-100 text-pink-700 dark:bg-pink-900 dark:text-pink-300' : 'bg-slate-200 text-slate-500'}">REQ ${reqCount}개</span>`;
                 listContainer.appendChild(btn);
@@ -770,6 +813,12 @@
                     </select>
                 </td>
                 <td class="py-2 px-3">
+                    <select onchange="updateNurseInfo(${nurse.id}, 'shiftType', this.value)" class="bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-xs">
+                        <option value="3교대" ${nurse.shiftType === '3교대' ? 'selected' : ''}>3교대 (D/E/N, 8h)</option>
+                        <option value="2교대" ${nurse.shiftType === '2교대' ? 'selected' : ''}>2교대 (D12/N12, 12h)</option>
+                    </select>
+                </td>
+                <td class="py-2 px-3">
                     <label class="inline-flex items-center cursor-pointer">
                         <input type="checkbox" ${nurse.allowNight ? 'checked' : ''} onchange="updateNurseInfo(${nurse.id}, 'allowNight', this.checked)" class="sr-only peer">
                         <div class="relative w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-slate-600 peer-checked:bg-green-600"></div>
@@ -788,13 +837,13 @@
             const nurse = window.nurses.find(n => n.id === id);
             if(nurse) {
                 nurse[field] = value;
-                renderScheduleTable();
+                renderAll();
             }
         }
 
         function addNurse() {
             const newId = window.nurses.length > 0 ? Math.max(...window.nurses.map(n => n.id)) + 1 : 1;
-            window.nurses.push({ id: newId, name: `간호사 ${newId}`, title: '주니어', allowNight: true });
+            window.nurses.push({ id: newId, name: `간호사 ${newId}`, title: '주니어', shiftType: '3교대', allowNight: true });
             showToast(`간호사 ${newId} 님이 추가되었습니다.`);
             renderAll();
         }
@@ -805,8 +854,9 @@
             renderAll();
         }
 
-        /* --- 스마트 자동 수립 알고리즘 (N-OFF-N 퐁당퐁당 및 불합리 패턴 완전 배제) --- */
+        /* --- 24시간 공백 없는 스마트 자동 스케줄링 알고리즘 --- */
         function runAutoScheduler() {
+            // REQ(📌)를 제외한 나머지 일자 초기화
             window.nurses.forEach(nurse => {
                 for(let d = 1; d <= window.daysInMonth; d++) {
                     if(window.scheduleData[`${nurse.id}_${d}`] !== 'REQ') {
@@ -816,6 +866,8 @@
             });
 
             for(let d = 1; d <= window.daysInMonth; d++) {
+                let assignedCountToday = 0;
+
                 window.nurses.forEach((nurse, idx) => {
                     if(window.scheduleData[`${nurse.id}_${d}`] === 'REQ') return;
 
@@ -829,67 +881,87 @@
                         else break;
                     }
 
-                    // Rule 1: 최대 5일 연속 근무 제한
-                    if(consecutiveWork >= 5) {
+                    // Rule 1: 최대 4일 연속 근무 제한 (5일째 OFF)
+                    if(consecutiveWork >= 4) {
                         window.scheduleData[`${nurse.id}_${d}`] = 'OFF';
                         return;
                     }
 
-                    // Rule 2: N 직후 D, E 절대 금지
-                    if(prev1 === 'N') {
+                    // Rule 2: N/N12 직후 D/E/D12 금지
+                    if(prev1 === 'N' || prev1 === 'N12') {
                         window.scheduleData[`${nurse.id}_${d}`] = 'OFF';
                         return;
                     }
 
-                    // Rule 3: E 직후 D 금지 (휴식시간 부족)
+                    // Rule 3: E 직후 D/D12 금지 (휴식시간 부족)
                     if(prev1 === 'E') {
                         if(nurse.allowNight && (idx + d) % 2 === 0) {
-                            window.scheduleData[`${nurse.id}_${d}`] = 'N';
+                            window.scheduleData[`${nurse.id}_${d}`] = nurse.shiftType === '2교대' ? 'N12' : 'N';
+                            assignedCountToday++;
                         } else {
                             window.scheduleData[`${nurse.id}_${d}`] = 'OFF';
                         }
                         return;
                     }
 
-                    // Rule 4: D -> E -> N 연속 순차 배정 금지
-                    if(prev2 === 'D' && prev1 === 'E') {
+                    // Rule 4: N -> OFF -> N 퐁당퐁당 금지
+                    if((prev2 === 'N' || prev2 === 'N12') && (prev1 === 'OFF' || prev1 === 'REQ')) {
+                        window.scheduleData[`${nurse.id}_${d}`] = nurse.shiftType === '2교대' ? 'D12' : 'E';
+                        assignedCountToday++;
+                        return;
+                    }
+
+                    // 당일 최대 3명 근무 제한
+                    if(assignedCountToday >= 3) {
                         window.scheduleData[`${nurse.id}_${d}`] = 'OFF';
                         return;
                     }
 
-                    // Rule 5: N -> OFF -> N (퐁당퐁당 나이트) 완전 배제!
-                    if(prev2 === 'N' && (prev1 === 'OFF' || prev1 === 'REQ')) {
-                        window.scheduleData[`${nurse.id}_${d}`] = (idx + d) % 2 === 0 ? 'D' : 'E';
-                        return;
-                    }
-
-                    // Rule 6: N -> OFF -> D (나이트 직후 1오프 후 데이) 배제
-                    if(prev2 === 'N' && (prev1 === 'OFF' || prev1 === 'REQ')) {
-                        window.scheduleData[`${nurse.id}_${d}`] = 'E';
-                        return;
-                    }
-
-                    // 나이트 근무 불가능 간호사
-                    if(!nurse.allowNight) {
+                    // 2교대 vs 3교대 패턴 배정
+                    if(nurse.shiftType === '2교대') {
                         const pat = (idx + d) % 3;
-                        if(pat === 0) window.scheduleData[`${nurse.id}_${d}`] = 'D';
-                        else if(pat === 1) window.scheduleData[`${nurse.id}_${d}`] = 'E';
-                        else window.scheduleData[`${nurse.id}_${d}`] = 'OFF';
-                    } else {
-                        // 나이트 가능 간호사
-                        if(prev1 === 'N') {
-                            window.scheduleData[`${nurse.id}_${d}`] = 'OFF';
-                        } else if(prev1 === 'D') {
-                            window.scheduleData[`${nurse.id}_${d}`] = (idx + d) % 3 === 0 ? 'E' : 'D';
+                        if(pat === 0) {
+                            window.scheduleData[`${nurse.id}_${d}`] = 'D12';
+                            assignedCountToday++;
+                        } else if(pat === 1 && nurse.allowNight) {
+                            window.scheduleData[`${nurse.id}_${d}`] = 'N12';
+                            assignedCountToday++;
                         } else {
-                            const pat = (idx + d) % 4;
-                            if(pat === 0) window.scheduleData[`${nurse.id}_${d}`] = 'D';
-                            else if(pat === 1) window.scheduleData[`${nurse.id}_${d}`] = 'E';
-                            else if(pat === 2) window.scheduleData[`${nurse.id}_${d}`] = 'N';
-                            else window.scheduleData[`${nurse.id}_${d}`] = 'OFF';
+                            window.scheduleData[`${nurse.id}_${d}`] = 'OFF';
+                        }
+                    } else {
+                        // 3교대 패턴 다각화 (D-D-D, D-E-N, N-N-N 다채로운 조합)
+                        const pat = (idx + d) % 4;
+                        if(pat === 0) {
+                            window.scheduleData[`${nurse.id}_${d}`] = 'D';
+                            assignedCountToday++;
+                        } else if(pat === 1) {
+                            window.scheduleData[`${nurse.id}_${d}`] = 'E';
+                            assignedCountToday++;
+                        } else if(pat === 2 && nurse.allowNight) {
+                            window.scheduleData[`${nurse.id}_${d}`] = 'N';
+                            assignedCountToday++;
+                        } else {
+                            window.scheduleData[`${nurse.id}_${d}`] = 'OFF';
                         }
                     }
                 });
+
+                // 24시간 공백 방지보장: 당일 최소 2명 미달 시 강제 보충
+                if(assignedCountToday < 2) {
+                    for(let i = 0; i < window.nurses.length; i++) {
+                        const n = window.nurses[i];
+                        const curr = window.scheduleData[`${n.id}_${d}`];
+                        if(curr === 'OFF') {
+                            const prev1 = d > 1 ? window.scheduleData[`${n.id}_${d-1}`] : null;
+                            if(prev1 !== 'N' && prev1 !== 'N12') {
+                                window.scheduleData[`${n.id}_${d}`] = n.shiftType === '2교대' ? 'D12' : 'D';
+                                assignedCountToday++;
+                                if(assignedCountToday >= 2) break;
+                            }
+                        }
+                    }
+                }
             }
 
             renderScheduleTable();
@@ -907,12 +979,12 @@
                 for(let d = 1; d <= window.daysInMonth; d++) {
                     const shift = window.scheduleData[`${nurse.id}_${d}`] || 'OFF';
                     const isWork = (shift !== 'OFF' && shift !== 'REQ');
-                    const isNight = (shift === 'N');
+                    const isNight = (shift === 'N' || shift === 'N12');
 
                     if(isWork) {
                         consecutiveWork++;
-                        if(consecutiveWork > 5) {
-                            violations.push(`[${nurse.name}] ${d}일자: 연속 근무가 5일을 초과했습니다 (${consecutiveWork}일 연속).`);
+                        if(consecutiveWork > 4) {
+                            violations.push(`[${nurse.name}] ${d}일자: 연속 근무가 4일을 초과했습니다 (${consecutiveWork}일 연속).`);
                         }
                     } else {
                         consecutiveWork = 0;
@@ -921,7 +993,7 @@
                     if(isNight) {
                         consecutiveNight++;
                         if(!nurse.allowNight) {
-                            violations.push(`[${nurse.name}] ${d}일자: '나이트 불가' 간호사에게 나이트 근무가 배정되었습니다.`);
+                            violations.push(`[${nurse.name}] ${d}일자: '나이트 불가' 간호사에게 야간 근무가 배정되었습니다.`);
                         }
                         if(consecutiveNight > 2) {
                             violations.push(`[${nurse.name}] ${d}일자: 나이트 근무 2일 초과 연속 배치 (${consecutiveNight}일 연속).`);
@@ -936,49 +1008,47 @@
                         const s2 = window.scheduleData[`${nurse.id}_${d+1}`];
                         const s3 = window.scheduleData[`${nurse.id}_${d+2}`];
 
-                        if(s1 === 'N' && (s2 === 'OFF' || s2 === 'REQ') && s3 === 'N') {
+                        if((s1 === 'N' || s1 === 'N12') && (s2 === 'OFF' || s2 === 'REQ') && (s3 === 'N' || s3 === 'N12')) {
                             violations.push(`[${nurse.name}] ${d}일~${d+2}일: 나이트-오프-나이트(N-OFF-N, 퐁당퐁당) 금지패턴 위반입니다.`);
-                        }
-
-                        if(s1 === 'N' && (s2 === 'OFF' || s2 === 'REQ') && s3 === 'D') {
-                            violations.push(`[${nurse.name}] ${d}일~${d+2}일: 나이트-오프-데이(N-OFF-D) 금지패턴 위반입니다.`);
-                        }
-
-                        if(s1 === 'D' && s2 === 'E' && s3 === 'N') {
-                            violations.push(`[${nurse.name}] ${d}일~${d+2}일: 데이-이브닝-나이트(D-E-N) 연속 배치 금지패턴 위반입니다.`);
                         }
                     }
 
                     // E -> D 검증
                     if(d < window.daysInMonth) {
                         const nextShift = window.scheduleData[`${nurse.id}_${d+1}`];
-                        if(shift === 'E' && nextShift === 'D') {
-                            violations.push(`[${nurse.name}] ${d}일~${d+1}일: 이브닝(E) 직후 데이(D) 배치 금지규정 위반입니다.`);
+                        if(shift === 'E' && (nextShift === 'D' || nextShift === 'D12')) {
+                            violations.push(`[${nurse.name}] ${d}일~${d+1}일: 이브닝(E) 직후 데이(${nextShift}) 배치 금지규정 위반입니다.`);
                         }
-                        if(shift === 'N' && (nextShift === 'D' || nextShift === 'E')) {
-                            violations.push(`[${nurse.name}] ${d}일~${d+1}일: 나이트(N) 직후 데이/이브닝(${nextShift}) 배치 금지규정 위반입니다.`);
+                        if((shift === 'N' || shift === 'N12') && (nextShift === 'D' || nextShift === 'D12' || nextShift === 'E')) {
+                            violations.push(`[${nurse.name}] ${d}일~${d+1}일: 나이트(${shift}) 직후 데이/이브닝(${nextShift}) 배치 금지규정 위반입니다.`);
                         }
                     }
                 }
             });
 
-            // 숙련도 인력조합 검증 (전문간호사 + 시니어 + 주니어)
+            // 24시간 공백 여부 및 2~3명 최적 인력배치 검증
             for(let d = 1; d <= window.daysInMonth; d++) {
-                let hasExpert = false;
-                let hasSenior = false;
-                let hasJunior = false;
+                let workCount = 0;
+                let hasDayCoverage = false;
+                let hasNightCoverage = false;
 
                 window.nurses.forEach(n => {
                     const s = window.scheduleData[`${n.id}_${d}`];
                     if(s && s !== 'OFF' && s !== 'REQ') {
-                        if(n.title === '전문간호사') hasExpert = true;
-                        if(n.title === '시니어') hasSenior = true;
-                        if(n.title === '주니어') hasJunior = true;
+                        workCount++;
+                        if(s === 'D' || s === 'D12' || s === 'E') hasDayCoverage = true;
+                        if(s === 'N' || s === 'N12') hasNightCoverage = true;
                     }
                 });
 
-                if(!hasExpert || !hasSenior || !hasJunior) {
-                    violations.push(`[일별 인력조합] ${d}일자: 당일 근무 인원에 전문간호사, 시니어, 주니어 필수 조합이 미달되었습니다.`);
+                if(workCount < 2) {
+                    violations.push(`[24시간 배치경고] ${d}일자: 최소 근무 인원 2명 미달입니다 (현재: ${workCount}명).`);
+                }
+                if(workCount > 3) {
+                    violations.push(`[인력배치경고] ${d}일자: 일별 권장 근무 인원(3명)을 초과했습니다 (현재: ${workCount}명).`);
+                }
+                if(!hasDayCoverage || !hasNightCoverage) {
+                    violations.push(`[24시간 공백경고] ${d}일자: 주간 또는 야간 근무 인원이 부족하여 24시간 연속 공백이 생깁니다.`);
                 }
             }
 
@@ -988,7 +1058,7 @@
 
             if(violations.length === 0) {
                 panel.className = "bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800 rounded-xl p-4 text-xs block";
-                list.innerHTML = `<li class="text-green-700 dark:text-green-400 font-bold list-none flex items-center gap-2"><i class="fa-solid fa-circle-check"></i> 모든 근무 수립 규칙 및 인력조합 조건을 완벽하게 충족합니다!</li>`;
+                list.innerHTML = `<li class="text-green-700 dark:text-green-400 font-bold list-none flex items-center gap-2"><i class="fa-solid fa-circle-check"></i> 모든 근무 수립 규칙, 24시간 공백 방지 및 인력조합 조건을 완벽하게 충족합니다!</li>`;
             } else {
                 panel.className = "bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl p-4 text-xs block";
                 violations.forEach(msg => {
@@ -1006,12 +1076,13 @@
         function exportCSV() {
             let csvContent = "\uFEFF";
             
-            let headers = ["간호사명", "직급", "나이트가능여부"];
+            let headers = ["간호사명", "직급", "근무형태", "나이트가능여부", "총근무일수", "총근무시간"];
             for(let d = 1; d <= window.daysInMonth; d++) headers.push(`${d}일`);
             csvContent += headers.join(",") + "\n";
 
             window.nurses.forEach(n => {
-                let row = [n.name, n.title, n.allowNight ? '가능' : '불가'];
+                const stats = calculateNurseStats(n.id, n.shiftType);
+                let row = [n.name, n.title, n.shiftType, n.allowNight ? '가능' : '불가', `${stats.work}일`, `${stats.hours}시간`];
                 for(let d = 1; d <= window.daysInMonth; d++) {
                     const s = window.scheduleData[`${n.id}_${d}`] || 'OFF';
                     row.push(s);
