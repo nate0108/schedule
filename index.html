@@ -132,7 +132,7 @@
                             <span>Cloud 연동 모드</span>
                         </span>
                     </h1>
-                    <p class="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">맞춤형 스마트 스케줄링 & 규칙 자동 검증</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">스마트 스케줄링 & 근무 규칙 자동 검증</p>
                 </div>
             </div>
 
@@ -213,7 +213,7 @@
                 <span class="px-2 py-0.5 rounded shift-REQ">📌 REQ</span>
             </div>
             <div class="text-slate-400 text-[11px]">
-                * N-OFF-N(퐁당퐁당) 금지 | D-E-N, E-D, N-OFF-D 금지 | 전문/시니어/주니어 조합
+                * N-OFF-N(퐁당퐁당) 금지 | D-E-N, E-D, N-OFF-D 금지 | 전문간호사+시니어+주니어 조합
             </div>
         </div>
 
@@ -859,7 +859,6 @@
 
                     // Rule 5: N -> OFF -> N (퐁당퐁당 나이트) 완전 배제!
                     if(prev2 === 'N' && (prev1 === 'OFF' || prev1 === 'REQ')) {
-                        // 퐁당퐁당을 막기 위해 Day 또는 Evening으로 배정
                         window.scheduleData[`${nurse.id}_${d}`] = (idx + d) % 2 === 0 ? 'D' : 'E';
                         return;
                     }
@@ -877,7 +876,7 @@
                         else if(pat === 1) window.scheduleData[`${nurse.id}_${d}`] = 'E';
                         else window.scheduleData[`${nurse.id}_${d}`] = 'OFF';
                     } else {
-                        // 나이트 가능 간호사 (D -> D -> N -> N -> OFF 로환)
+                        // 나이트 가능 간호사
                         if(prev1 === 'N') {
                             window.scheduleData[`${nurse.id}_${d}`] = 'OFF';
                         } else if(prev1 === 'D') {
