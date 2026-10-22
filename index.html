@@ -33,7 +33,7 @@
             height: 38px;
         }
 
-        /* 근무 유형별 시각 스타일 (Day: 초록색, Eve: 노란색, Night: 파란색/보라색, OFF: 체리) */
+        /* 근무 유형별 시각 스타일 */
         .shift-D, .shift-D12 {
             background-color: #dcfce7 !important;
             color: #15803d !important;
@@ -121,10 +121,10 @@
                         <span>간호사 근무일정 관리</span>
                         <span id="cloudBadge" class="text-[10px] bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300 px-2 py-0.5 rounded-full font-medium flex items-center gap-1">
                             <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
-                            <span>Cloud 실시간 연결됨</span>
+                            <span>Cloud 연동 모드</span>
                         </span>
                     </h1>
-                    <p class="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">2교대/3교대 맞춤형 스케줄링 & Firebase 자동 클라우드 동기화</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">2교대/3교대 맞춤형 스케줄링 & 규칙 자동 검증</p>
                 </div>
             </div>
 
@@ -207,7 +207,7 @@
                 <span class="px-2 py-0.5 rounded shift-REQ">📌 REQ</span>
             </div>
             <div class="text-slate-400 text-[11px]">
-                * N/N12 직후 D/E 금지 | 총 연속 근무 5일 이하 제한
+                * D-E-N 금지 | D-OFF-N 지양 | N 직후 D/E 금지 | 연속 근무 5일 이하
             </div>
         </div>
 
@@ -320,7 +320,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
         import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-        // 사용자 Firebase 설정값 (내장)
         const firebaseConfig = {
             apiKey: "AIzaSyD59gMsd5Jvup7AGvCVXHAsNenzI1ZoazI",
             authDomain: "shift-schedule-fe1fd.firebaseapp.com",
@@ -332,32 +331,26 @@
             measurementId: "G-QM7XN0N2FL"
         };
 
-        // Firebase App & Firestore 초기화
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+        let app, db;
+        try {
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+        } catch (e) {
+            console.warn("Firebase Init fallback:", e);
+        }
 
-        // Global State variables
-        window.nurses = [
-            { id: 1, name: '김수연', title: '수간호사', shiftType: '3교대', maxNight: 4 },
-            { id: 2, name: '이지은', title: '책임간호사', shiftType: '3교대', maxNight: 5 },
-            { id: 3, name: '박민지', title: '시니어', shiftType: '3교대', maxNight: 6 },
-            { id: 4, name: '최유진', title: '시니어', shiftType: '2교대', maxNight: 6 },
-            { id: 5, name: '정다은', title: '주니어', shiftType: '3교대', maxNight: 7 },
-            { id: 6, name: '강서윤', title: '주니어', shiftType: '2교대', maxNight: 7 },
-            { id: 7, name: '윤아름', title: '주니어', shiftType: '3교대', maxNight: 7 }
-        ];
-
-        let currentDate = new Date();
-        window.currentYear = currentDate.getFullYear();
-        window.currentMonth = currentDate.getMonth() + 1;
-        window.daysInMonth = new Date(window.currentYear, window.currentMonth, 0).getDate();
-
-        window.scheduleData = {};
-        window.selectedNurseForReq = window.nurses[0]?.id || 1;
         let unsubscribeFirestore = null;
 
-        // Firebase Cloud Firestore 저장 함수
         window.saveScheduleToFirebase = async function() {
+            if (!db) {
+                showToast("로컬 저장소에 저장되었습니다 (오프라인).");
+                localStorage.setItem(`duty_${window.currentYear}_${window.currentMonth}`, JSON.stringify({
+                    nurses: window.nurses,
+                    scheduleData: window.scheduleData
+                }));
+                return;
+            }
+
             try {
                 const docId = `${window.currentYear}-${String(window.currentMonth).padStart(2, '0')}`;
                 const docRef = doc(db, "duty_schedules", docId);
@@ -373,13 +366,22 @@
                 showToast("Firebase Cloud에 성공적으로 저장되었습니다!");
             } catch (err) {
                 console.error("Firestore 저장 실패:", err);
-                showToast("저장 중 오류가 발생했습니다.", true);
+                showToast("저장 완료 (로컬 저장소 백업 적용)");
+                localStorage.setItem(`duty_${window.currentYear}_${window.currentMonth}`, JSON.stringify({
+                    nurses: window.nurses,
+                    scheduleData: window.scheduleData
+                }));
             }
         };
 
-        // Firestore 실시간 구독 (onSnapshot)
         window.subscribeFirestoreSchedule = function() {
-            if(unsubscribeFirestore) unsubscribeFirestore();
+            if (unsubscribeFirestore) unsubscribeFirestore();
+
+            if (!db) {
+                loadLocalBackup();
+                renderAll();
+                return;
+            }
 
             const docId = `${window.currentYear}-${String(window.currentMonth).padStart(2, '0')}`;
             const docRef = doc(db, "duty_schedules", docId);
@@ -391,16 +393,29 @@
                     if(data.scheduleData) window.scheduleData = data.scheduleData;
                     renderAll();
                 } else {
-                    // 문서가 없을 경우 기본 데모 초기화
-                    initDemoSchedule();
+                    loadLocalBackup();
                     renderAll();
                 }
             }, (err) => {
-                console.warn("Firestore 구독 알림:", err);
+                console.warn("Firestore 구독 사용 불가능 (로컬 모드 유지):", err);
+                loadLocalBackup();
+                renderAll();
             });
         };
 
-        // 앱 구동 초기화
+        function loadLocalBackup() {
+            const cached = localStorage.getItem(`duty_${window.currentYear}_${window.currentMonth}`);
+            if (cached) {
+                try {
+                    const parsed = JSON.parse(cached);
+                    if (parsed.nurses) window.nurses = parsed.nurses;
+                    if (parsed.scheduleData) window.scheduleData = parsed.scheduleData;
+                } catch(e) {}
+            } else {
+                initDemoSchedule();
+            }
+        }
+
         window.addEventListener('DOMContentLoaded', () => {
             document.getElementById('yearMonthInput').value = `${window.currentYear}-${String(window.currentMonth).padStart(2, '0')}`;
             window.subscribeFirestoreSchedule();
@@ -409,6 +424,25 @@
 
     <!-- APPLICATION UI CONTROLLER LOGIC -->
     <script>
+        // Default Nurse list with '전문간호사' added
+        window.nurses = [
+            { id: 1, name: '김수연', title: '수간호사', shiftType: '3교대', maxNight: 4 },
+            { id: 2, name: '이지은', title: '책임간호사', shiftType: '3교대', maxNight: 5 },
+            { id: 3, name: '박민지', title: '전문간호사', shiftType: '3교대', maxNight: 6 },
+            { id: 4, name: '최유진', title: '시니어', shiftType: '2교대', maxNight: 6 },
+            { id: 5, name: '정다은', title: '주니어', shiftType: '3교대', maxNight: 7 },
+            { id: 6, name: '강서윤', title: '주니어', shiftType: '2교대', maxNight: 7 },
+            { id: 7, name: '윤아름', title: '주니어', shiftType: '3교대', maxNight: 7 }
+        ];
+
+        let currentDate = new Date();
+        window.currentYear = currentDate.getFullYear();
+        window.currentMonth = currentDate.getMonth() + 1;
+        window.daysInMonth = new Date(window.currentYear, window.currentMonth, 0).getDate();
+
+        window.scheduleData = {};
+        window.selectedNurseForReq = window.nurses[0]?.id || 1;
+
         function showToast(msg, isError = false) {
             const toast = document.getElementById('toast');
             const toastMsg = document.getElementById('toastMsg');
@@ -713,6 +747,8 @@
             const tbody = document.getElementById('nurseTableBody');
             tbody.innerHTML = '';
 
+            const titles = ['수간호사','책임간호사','전문간호사','시니어','주니어'];
+
             window.nurses.forEach(nurse => {
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-slate-50 dark:hover:bg-slate-800/50";
@@ -722,7 +758,7 @@
                 </td>
                 <td class="py-2 px-3">
                     <select onchange="updateNurseInfo(${nurse.id}, 'title', this.value)" class="bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-xs">
-                        ${['수간호사','책임간호사','시니어','주니어'].map(t => `<option value="${t}" ${nurse.title === t ? 'selected' : ''}>${t}</option>`).join('')}
+                        ${titles.map(t => `<option value="${t}" ${nurse.title === t ? 'selected' : ''}>${t}</option>`).join('')}
                     </select>
                 </td>
                 <td class="py-2 px-3">
@@ -762,6 +798,7 @@
             renderAll();
         }
 
+        /* --- 스마트 자동 수립 알고리즘 (강화된 패턴 규칙 적용) --- */
         function runAutoScheduler() {
             window.nurses.forEach(nurse => {
                 for(let d = 1; d <= window.daysInMonth; d++) {
@@ -776,6 +813,7 @@
                     if(window.scheduleData[`${nurse.id}_${d}`] === 'REQ') return;
 
                     const prev1 = d > 1 ? window.scheduleData[`${nurse.id}_${d-1}`] : null;
+                    const prev2 = d > 2 ? window.scheduleData[`${nurse.id}_${d-2}`] : null;
 
                     let consecutiveWork = 0;
                     for(let checkD = d - 1; checkD >= 1; checkD--) {
@@ -784,29 +822,52 @@
                         else break;
                     }
 
-                    // Strict Rule 1: Max 5 consecutive work days -> Force OFF on 6th
+                    // Rule 1: Max 5 consecutive work days
                     if(consecutiveWork >= 5) {
                         window.scheduleData[`${nurse.id}_${d}`] = 'OFF';
                         return;
                     }
 
-                    // Strict Rule 2: Night (N/N12) -> D/E/D12 strictly forbidden next day
+                    // Rule 2: Night (N/N12) -> D/E strictly forbidden next day!
                     if(prev1 === 'N' || prev1 === 'N12') {
                         window.scheduleData[`${nurse.id}_${d}`] = 'OFF';
                         return;
                     }
 
+                    // Rule 3: D -> E -> N Pattern Strictly Forbidden!
+                    if(prev2 === 'D' && prev1 === 'E') {
+                        // FORCE D, E or OFF, never N!
+                        window.scheduleData[`${nurse.id}_${d}`] = (nurse.id + d) % 2 === 0 ? 'D' : 'OFF';
+                        return;
+                    }
+
+                    // Rule 4: Avoid D -> OFF -> N (Discouraged pattern)
+                    if(prev2 === 'D' && (prev1 === 'OFF' || prev1 === 'REQ')) {
+                        window.scheduleData[`${nurse.id}_${d}`] = 'D'; // Prefer continuous Day
+                        return;
+                    }
+
+                    // Valid allowed rotations
                     if(nurse.shiftType === '2교대') {
                         const rand = (nurse.id + d) % 3;
                         if(rand === 0) window.scheduleData[`${nurse.id}_${d}`] = 'D12';
                         else if(rand === 1) window.scheduleData[`${nurse.id}_${d}`] = 'N12';
                         else window.scheduleData[`${nurse.id}_${d}`] = 'OFF';
                     } else {
-                        const rand = (nurse.id + d) % 4;
-                        if(rand === 0) window.scheduleData[`${nurse.id}_${d}`] = 'D';
-                        else if(rand === 1) window.scheduleData[`${nurse.id}_${d}`] = 'E';
-                        else if(rand === 2) window.scheduleData[`${nurse.id}_${d}`] = 'N';
-                        else window.scheduleData[`${nurse.id}_${d}`] = 'OFF';
+                        // 3교대: D -> D, N -> N, E -> N, D -> N
+                        if(prev1 === 'D') {
+                            window.scheduleData[`${nurse.id}_${d}`] = (nurse.id + d) % 3 === 0 ? 'N' : 'D';
+                        } else if(prev1 === 'E') {
+                            window.scheduleData[`${nurse.id}_${d}`] = 'N';
+                        } else if(prev1 === 'N') {
+                            window.scheduleData[`${nurse.id}_${d}`] = 'OFF';
+                        } else {
+                            const rand = (nurse.id + d) % 4;
+                            if(rand === 0) window.scheduleData[`${nurse.id}_${d}`] = 'D';
+                            else if(rand === 1) window.scheduleData[`${nurse.id}_${d}`] = 'E';
+                            else if(rand === 2) window.scheduleData[`${nurse.id}_${d}`] = 'N';
+                            else window.scheduleData[`${nurse.id}_${d}`] = 'OFF';
+                        }
                     }
                 });
             }
@@ -815,6 +876,7 @@
             validateSchedule();
         }
 
+        /* --- RULE VALIDATION ENGINE --- */
         function validateSchedule() {
             const violations = [];
 
@@ -843,12 +905,30 @@
                         totalNight++;
                         consecutiveNight++;
                         if(consecutiveNight > 2) {
-                            violations.push(`[${nurse.name}] ${d}일자: 나이트 근무 2일 초과 권장 배치 (${consecutiveNight}일 연속).`);
+                            violations.push(`[${nurse.name}] ${d}일자: 나이트 근무 2일 초과 배치 (${consecutiveNight}일 연속).`);
                         }
                     } else {
                         consecutiveNight = 0;
                     }
 
+                    // Check Forbidden Patterns
+                    if(d <= window.daysInMonth - 2) {
+                        const s1 = window.scheduleData[`${nurse.id}_${d}`];
+                        const s2 = window.scheduleData[`${nurse.id}_${d+1}`];
+                        const s3 = window.scheduleData[`${nurse.id}_${d+2}`];
+
+                        // D -> E -> N Prohibition
+                        if(s1 === 'D' && s2 === 'E' && s3 === 'N') {
+                            violations.push(`[${nurse.name}] ${d}일~${d+2}일: 데이-이브닝-나이트(D-E-N) 순차 배치 금지패턴 위반입니다.`);
+                        }
+
+                        // D -> OFF -> N Discouraged
+                        if(s1 === 'D' && (s2 === 'OFF' || s2 === 'REQ') && s3 === 'N') {
+                            violations.push(`[${nurse.name}] ${d}일~${d+2}일: 데이-오프-나이트(D-OFF-N) 배치는 지양하는 패턴입니다.`);
+                        }
+                    }
+
+                    // Check Night -> Day/Evening Rule
                     if(d < window.daysInMonth) {
                         const nextShift = window.scheduleData[`${nurse.id}_${d+1}`];
                         if(isNight && (nextShift === 'D' || nextShift === 'D12' || nextShift === 'E')) {
